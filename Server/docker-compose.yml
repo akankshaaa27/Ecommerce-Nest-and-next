@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: postgres-db
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: microservice_db
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"   # RabbitMQ (app)
+      - "15672:15672" # RabbitMQ Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+
+  customer-ms:
+    build:
+      context: ./customer-ms
+    container_name: customer-ms
+    restart: always
+    ports:
+      - "3002:3002"
+    depends_on:
+      - postgres
+      - rabbitmq
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: postgres
+      DB_PASSWORD: root
+      DB_NAME: customer_db
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+
+  product-order-ms:
+    build:
+      context: ./product-order-ms
+    container_name: product-order-ms
+    restart: always
+    ports:
+      - "3001:3001"
+    depends_on:
+      - postgres
+      - rabbitmq
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: postgres
+      DB_PASSWORD: root
+      DB_NAME: product_order_db
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+
+volumes:
+  pgdata:
